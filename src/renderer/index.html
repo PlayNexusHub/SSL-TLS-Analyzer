@@ -1,0 +1,364 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self' 'unsafe-inline'; style-src 'self' 'unsafe-inline'; img-src 'self' data:;">
+    <title>PlayNexus SSL/TLS Analyzer</title>
+    <link rel="stylesheet" href="styles.css">
+</head>
+<body>
+    <div class="app-container">
+        <!-- Header -->
+        <header class="app-header">
+            <div class="header-content">
+                <div class="logo-section">
+                    <img src="../../assets/playnexus-logo.png" alt="PlayNexus" class="logo" onerror="this.style.display='none'">
+                    <h1>SSL/TLS Analyzer</h1>
+                </div>
+                <div class="header-actions">
+                    <button id="settingsBtn" class="btn btn-secondary" title="Settings">
+                        <span class="icon">⚙️</span>
+                    </button>
+                    <button id="helpBtn" class="btn btn-secondary" title="Help">
+                        <span class="icon">❓</span>
+                    </button>
+                </div>
+            </div>
+        </header>
+
+        <!-- Main Content -->
+        <main class="main-content">
+            <!-- Analysis Input Section -->
+            <section class="input-section">
+                <div class="input-card">
+                    <h3>SSL/TLS Analysis</h3>
+                    <div class="input-group">
+                        <label for="hostnameInput">Hostname:</label>
+                        <input type="text" id="hostnameInput" placeholder="example.com" class="hostname-input">
+                    </div>
+                    <div class="input-group">
+                        <label for="portInput">Port:</label>
+                        <input type="number" id="portInput" value="443" min="1" max="65535" class="port-input">
+                    </div>
+                    <div class="analysis-controls">
+                        <button id="analyzeBtn" class="btn btn-primary">
+                            <span class="icon">🔍</span>
+                            Analyze SSL/TLS
+                        </button>
+                        <button id="quickTestBtn" class="btn btn-secondary">
+                            <span class="icon">⚡</span>
+                            Quick Test
+                        </button>
+                    </div>
+                    <div class="quick-targets">
+                        <button class="quick-target" data-hostname="google.com">Google</button>
+                        <button class="quick-target" data-hostname="github.com">GitHub</button>
+                        <button class="quick-target" data-hostname="cloudflare.com">Cloudflare</button>
+                        <button class="quick-target" data-hostname="mozilla.org">Mozilla</button>
+                    </div>
+                </div>
+
+                <!-- Loading State -->
+                <div id="loadingState" class="loading-state hidden">
+                    <div class="spinner"></div>
+                    <h3>Analyzing SSL/TLS Configuration...</h3>
+                    <p id="loadingText">Connecting to server...</p>
+                </div>
+            </section>
+
+            <!-- Results Section -->
+            <section class="results-section">
+                <div id="noResults" class="no-results">
+                    <div class="no-results-icon">🔒</div>
+                    <h3>Ready for SSL/TLS Analysis</h3>
+                    <p>Enter a hostname above to analyze its SSL/TLS configuration and certificate details.</p>
+                </div>
+
+                <!-- Results Content -->
+                <div id="resultsContent" class="results-content hidden">
+                    <!-- Security Score -->
+                    <div class="score-section">
+                        <div class="score-card">
+                            <div class="score-circle">
+                                <div class="score-value" id="scoreValue">0</div>
+                                <div class="score-grade" id="scoreGrade">F</div>
+                            </div>
+                            <div class="score-details">
+                                <h3>SSL/TLS Security Score</h3>
+                                <p id="scoreDescription">Certificate and configuration analysis</p>
+                                <div class="score-bar">
+                                    <div class="score-fill" id="scoreFill"></div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Analysis Tabs -->
+                    <div class="analysis-tabs">
+                        <button class="analysis-tab active" data-tab="overview">Overview</button>
+                        <button class="analysis-tab" data-tab="certificate">Certificate</button>
+                        <button class="analysis-tab" data-tab="chain">Certificate Chain</button>
+                        <button class="analysis-tab" data-tab="protocols">Protocols</button>
+                        <button class="analysis-tab" data-tab="ciphers">Cipher Suites</button>
+                        <button class="analysis-tab" data-tab="vulnerabilities">Vulnerabilities</button>
+                    </div>
+
+                    <!-- Tab Content -->
+                    <div class="tab-content">
+                        <!-- Overview Tab -->
+                        <div id="overviewTab" class="tab-pane active">
+                            <div class="overview-grid">
+                                <div class="info-card">
+                                    <h4>Certificate Status</h4>
+                                    <div class="cert-status" id="certStatus">Unknown</div>
+                                </div>
+                                <div class="info-card">
+                                    <h4>Days Until Expiry</h4>
+                                    <div id="daysUntilExpiry">-</div>
+                                </div>
+                                <div class="info-card">
+                                    <h4>Key Algorithm</h4>
+                                    <div id="keyAlgorithm">-</div>
+                                </div>
+                                <div class="info-card">
+                                    <h4>Key Size</h4>
+                                    <div id="keySize">-</div>
+                                </div>
+                                <div class="info-card">
+                                    <h4>Signature Algorithm</h4>
+                                    <div id="signatureAlgorithm">-</div>
+                                </div>
+                                <div class="info-card">
+                                    <h4>TLS Protocol</h4>
+                                    <div id="tlsProtocol">-</div>
+                                </div>
+                            </div>
+                            
+                            <div class="summary-section">
+                                <h4>Security Summary</h4>
+                                <div id="securitySummary" class="summary-content"></div>
+                            </div>
+
+                            <div class="issues-section">
+                                <h4>Issues Found</h4>
+                                <div id="issuesList" class="issues-list"></div>
+                            </div>
+
+                            <div class="recommendations-section">
+                                <h4>Recommendations</h4>
+                                <div id="recommendationsList" class="recommendations-list"></div>
+                            </div>
+                        </div>
+
+                        <!-- Certificate Tab -->
+                        <div id="certificateTab" class="tab-pane">
+                            <div class="cert-details">
+                                <div class="cert-section">
+                                    <h4>Subject Information</h4>
+                                    <div id="certSubject" class="cert-info"></div>
+                                </div>
+                                <div class="cert-section">
+                                    <h4>Issuer Information</h4>
+                                    <div id="certIssuer" class="cert-info"></div>
+                                </div>
+                                <div class="cert-section">
+                                    <h4>Validity Period</h4>
+                                    <div id="certValidity" class="cert-info"></div>
+                                </div>
+                                <div class="cert-section">
+                                    <h4>Subject Alternative Names</h4>
+                                    <div id="certSAN" class="cert-info"></div>
+                                </div>
+                                <div class="cert-section">
+                                    <h4>Fingerprints</h4>
+                                    <div id="certFingerprints" class="cert-info"></div>
+                                </div>
+                            </div>
+                            <div class="cert-actions">
+                                <button id="exportCertBtn" class="btn btn-secondary">
+                                    <span class="icon">📄</span>
+                                    Export Certificate
+                                </button>
+                                <button id="viewRawCertBtn" class="btn btn-secondary">
+                                    <span class="icon">🔍</span>
+                                    View Raw Certificate
+                                </button>
+                            </div>
+                        </div>
+
+                        <!-- Certificate Chain Tab -->
+                        <div id="chainTab" class="tab-pane">
+                            <div class="chain-validation">
+                                <h4>Chain Validation</h4>
+                                <div id="chainValidation" class="validation-result"></div>
+                            </div>
+                            <div class="chain-visualization">
+                                <h4>Certificate Chain</h4>
+                                <div id="chainVisualization" class="chain-display"></div>
+                            </div>
+                        </div>
+
+                        <!-- Protocols Tab -->
+                        <div id="protocolsTab" class="tab-pane">
+                            <div class="protocols-grid">
+                                <h4>Supported TLS Protocols</h4>
+                                <div id="protocolsList" class="protocols-list"></div>
+                            </div>
+                        </div>
+
+                        <!-- Cipher Suites Tab -->
+                        <div id="ciphersTab" class="tab-pane">
+                            <div class="cipher-controls">
+                                <button id="testCiphersBtn" class="btn btn-secondary">
+                                    <span class="icon">🔧</span>
+                                    Test Cipher Suites
+                                </button>
+                                <select id="cipherFilter" class="cipher-filter">
+                                    <option value="all">All Ciphers</option>
+                                    <option value="secure">Secure Only</option>
+                                    <option value="weak">Weak Only</option>
+                                    <option value="supported">Supported Only</option>
+                                </select>
+                            </div>
+                            <div id="ciphersList" class="ciphers-list"></div>
+                        </div>
+
+                        <!-- Vulnerabilities Tab -->
+                        <div id="vulnerabilitiesTab" class="tab-pane">
+                            <div id="vulnerabilitiesList" class="vulnerabilities-list"></div>
+                        </div>
+                    </div>
+
+                    <!-- Export Section -->
+                    <div class="export-section">
+                        <button id="exportReportBtn" class="btn btn-secondary">
+                            <span class="icon">📄</span>
+                            Export Report
+                        </button>
+                        <button id="exportJsonBtn" class="btn btn-secondary">
+                            <span class="icon">📋</span>
+                            Export JSON
+                        </button>
+                        <button id="shareResultsBtn" class="btn btn-secondary">
+                            <span class="icon">🔗</span>
+                            Share Results
+                        </button>
+                    </div>
+                </div>
+            </section>
+        </main>
+
+        <!-- Settings Modal -->
+        <div id="settingsModal" class="modal hidden">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <h3>Settings</h3>
+                    <button class="modal-close" id="closeSettings">&times;</button>
+                </div>
+                <div class="modal-body">
+                    <div class="setting-group">
+                        <label for="timeoutSetting">Connection Timeout (ms)</label>
+                        <input type="number" id="timeoutSetting" min="5000" max="60000" value="10000">
+                    </div>
+                    <div class="setting-group">
+                        <label>
+                            <input type="checkbox" id="checkRevocationSetting" checked>
+                            Check certificate revocation
+                        </label>
+                    </div>
+                    <div class="setting-group">
+                        <label>
+                            <input type="checkbox" id="validateChainSetting" checked>
+                            Validate certificate chain
+                        </label>
+                    </div>
+                    <div class="setting-group">
+                        <label>
+                            <input type="checkbox" id="checkWeakCiphersSetting" checked>
+                            Check for weak cipher suites
+                        </label>
+                    </div>
+                    <div class="setting-group">
+                        <label for="themeSetting">Theme</label>
+                        <select id="themeSetting">
+                            <option value="dark">Dark</option>
+                            <option value="light">Light</option>
+                            <option value="auto">Auto</option>
+                        </select>
+                    </div>
+                </div>
+                <div class="modal-footer">
+                    <button id="saveSettings" class="btn btn-primary">Save Settings</button>
+                    <button id="resetSettings" class="btn btn-secondary">Reset to Defaults</button>
+                </div>
+            </div>
+        </div>
+
+        <!-- Help Modal -->
+        <div id="helpModal" class="modal hidden">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <h3>Help & Support</h3>
+                    <button class="modal-close" id="closeHelp">&times;</button>
+                </div>
+                <div class="modal-body">
+                    <div class="help-section">
+                        <h4>SSL/TLS Analysis</h4>
+                        <p>Enter a hostname (e.g., example.com) to analyze its SSL/TLS configuration. The tool will examine the certificate, supported protocols, cipher suites, and identify potential security issues.</p>
+                    </div>
+                    <div class="help-section">
+                        <h4>Security Score</h4>
+                        <p>The security score is calculated based on:</p>
+                        <ul>
+                            <li><strong>Certificate validity</strong> - Expiration, key strength, signature algorithm</li>
+                            <li><strong>Protocol support</strong> - TLS versions and security</li>
+                            <li><strong>Cipher suites</strong> - Strength and security of supported ciphers</li>
+                            <li><strong>Vulnerabilities</strong> - Known security issues and misconfigurations</li>
+                        </ul>
+                    </div>
+                    <div class="help-section">
+                        <h4>Certificate Chain</h4>
+                        <p>The certificate chain shows the path from the server certificate to a trusted root certificate authority. A valid chain is essential for establishing trust.</p>
+                    </div>
+                    <div class="help-section">
+                        <h4>Ethical Use</h4>
+                        <p><strong>Important:</strong> Only analyze websites you own or have explicit permission to test. Unauthorized testing may violate terms of service or laws.</p>
+                    </div>
+                    <div class="help-section">
+                        <h4>Contact Support</h4>
+                        <p><strong>Email:</strong> <a href="mailto:playnexushq@gmail.com">playnexushq@gmail.com</a></p>
+                        <p><strong>Documentation:</strong> <a href="#" onclick="window.electronAPI && window.electronAPI.openExternal && window.electronAPI.openExternal('https://docs.playnexus.com')">docs.playnexus.com</a></p>
+                    </div>
+                    <div class="help-section">
+                        <h4>About</h4>
+                        <p>Powered by <strong>PlayNexus</strong> — Subsystems: ClanForge, BotForge</p>
+                        <p>Owned by <strong>Nortaq</strong></p>
+                        <p>Contact: playnexushq@gmail.com</p>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Raw Certificate Modal -->
+        <div id="rawCertModal" class="modal hidden">
+            <div class="modal-content large">
+                <div class="modal-header">
+                    <h3>Raw Certificate Data</h3>
+                    <button class="modal-close" id="closeRawCert">&times;</button>
+                </div>
+                <div class="modal-body">
+                    <div class="raw-cert-controls">
+                        <button id="copyRawCertBtn" class="btn btn-secondary">Copy to Clipboard</button>
+                        <button id="downloadRawCertBtn" class="btn btn-secondary">Download</button>
+                    </div>
+                    <pre id="rawCertData" class="raw-cert-data"></pre>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <script src="app.js"></script>
+</body>
+</html>
